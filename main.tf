@@ -58,9 +58,9 @@ resource "aws_security_group" "db_sg" {
   vpc_id      = aws_vpc.db_lab_vpc.id
 
   ingress {
-    description     = "Allow MySQL traffic strictly from the Web Server"
-    from_port       = 3306 # Default MySQL Port
-    to_port         = 3306
+    description     = "Allow PostgresSQL traffic strictly from the Web Server"
+    from_port       = 5432 # CHANGED: PostgreSQL default Port
+    to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.web_sg.id] # Cross-referencing Security Groups
   }
@@ -85,19 +85,25 @@ resource "aws_instance" "app_server" {
 # 5. Managed Database: AWS RDS MySQL Instance
 resource "aws_db_instance" "database" {
   allocated_storage      = 20
-  max_allocated_storage  = 50 # Allows auto-scaling up to 50GB if storage runs low
+  max_allocated_storage  = 50
   db_name                = "cloudenginedb"
-  engine                 = "mysql"
-  engine_version         = "8.0"
-  instance_class         = "db.t3.small" # Upgraded from db.t3.micro
-  username               = "admin"
-  password               = "CloudEngineerPass123!" # In production, use secrets manager!
+  
+  engine                 = "postgres"      
+  engine_version         = "16"            
+  instance_class         = "db.t3.small"   
+  
+  # FIXED: 'admin' is reserved in Postgres, using the engine default instead
+  username               = "postgres"      
+  password               = "CloudEngineerPass123!" 
+  
   db_subnet_group_name   = aws_db_subnet_group.rds_group.name
   vpc_security_group_ids = [aws_security_group.db_sg.id]
-  skip_final_snapshot    = true # Required to allow easy deletion during testing labs
+  skip_final_snapshot    = true
 }
 
 
+
+#6. Manage Cloudwatch 
 resource "aws_cloudwatch_metric_alarm" "db_cpu_alarm" {
   alarm_name          = "rds-mysql-high-cpu-utilization"
   comparison_operator = "GreaterThanOrEqualToThreshold"
